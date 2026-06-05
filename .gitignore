@@ -1,0 +1,13 @@
+Objects/
+Listings/
+DebugConfig/
+
+*.bak
+*.dep
+*.crf
+*.d
+
+*.uvguix.*
+
+Thumbs.db
+Desktop.ini
