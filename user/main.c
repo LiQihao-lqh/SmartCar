@@ -47,7 +47,7 @@ int main(void)
 	
 	
 	OLED_ShowBinary8(Line, Str);//不能写Str[9]，因为越界了，
-	OLED_ShowSignedNum(1,8,Get_Target(),5);//刷新现实目标速度
+//	OLED_ShowSignedNum(1,8,Get_Target(),5);//刷新现实目标速度
 	OLED_ShowSignedNum(2,8,Get_Left_Real(),5);//刷新显示真实速度
 	OLED_ShowSignedNum(3,8,Get_Right_Real(),5);//自动调节的CRR
 	OLED_ShowString(4, 1, Str);//灰度·传感器数据，行，列，字符串

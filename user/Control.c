@@ -23,32 +23,44 @@
 ========================================
 */
 
-/*========== 全局变量 ==========*/
+/*========== 模块内全局变量 ==========*/
 
 // 目标速度（左右轮共同目标）
+static int32_t Left_Target = 0;
+static int32_t Right_Target = 0;
 static int32_t Target = 0;
+
 
 // 左右轮实际速度（编码器测得）
 static int32_t Left_Real  = 0;
 static int32_t Right_Real = 0;
 
 // 左右轮误差
-static int16_t Left_Error  = 0;
-static int16_t Right_Error = 0;
+static int32_t Left_Error  = 0;
+static int32_t Right_Error = 0;
 
 // 左右轮最终输出值
 // 正负代表方向
-static int16_t Left_CRR  = 0;
-static int16_t Right_CRR = 0;
+static int32_t Left_CRR  = 0;
+static int32_t Right_CRR = 0;
 
-// 左右轮速度差
-// >0：左轮更快
-// <0：右轮更快
-static int16_t Correction = 0;
+// 寻线误差速度差
+static int32_t Line_Error  = 0;
+
+//pid控制
+static float Speed_Kp=1.0f;
+static float Turn_Out_Kp=0.2f;
+static int32_t Turn_Out;
+
+
 
 // PWM限幅，define作用是给数字起名字，方便修改理解
 #define PWM_MAX   1000
 #define PWM_MIN  -1000
+
+//设置一个基础的crr，然后在此之上进行调节
+#define Base_Pwm 100
+
 
 /*
 ========================================
@@ -66,14 +78,13 @@ void Target_Update(void)
 
     if(Key == 1)
     {
-        Target += 10;
+		Target  +=10;
     }
 
     if(Key == 2)
     {
 		
-		
-        Target -= 10;
+		Target  -=10;
     }
 
 }
@@ -107,48 +118,34 @@ void TIM4_IRQHandler(void)
         /*========== 2. 计算误差与速度差 ==========*/
 
         // 单轮误差
-        Left_Error  = Target - Left_Real;
-        Right_Error = Target - Right_Real;
 
         // 左右轮速度差
-        Correction = Left_Real - Right_Real;
+        Line_Error  = Left_Real - Right_Real;//这个只能跑直线，Line_Error 数据来源换成灰度传感器才能转弯
+
+		/*========== 4. 左右轮同步修正 ==========*/
+		//根据line_error正负修正
+		Turn_Out = (int32_t)Turn_Out_Kp*Line_Error ;
+		Left_Target =Target-Turn_Out; 
+		Right_Target =Target+Turn_Out; 
+		
+		Left_Error  = Left_Target - Left_Real;
+        Right_Error = Right_Target - Right_Real;
 
         /*========== 3. 单轮速度闭环 ==========*/
 
         // 左轮调整
-        if(Left_Error > 0)
-        {
-            Left_CRR += 1;
-        }
+        if(Target==0)
+		{
+		Left_CRR = 0;
+		Right_CRR = 0;
+		}
+		else
+		{
+		Left_CRR  = Base_Pwm + (int32_t)(Speed_Kp * Left_Error);
+		Right_CRR = Base_Pwm + (int32_t)(Speed_Kp * Right_Error);
+		}
 
-        if(Left_Error < 0)
-        {
-            Left_CRR -= 1;
-        }
 
-        // 右轮调整
-        if(Right_Error > 0)
-        {
-            Right_CRR += 1;
-        }
-
-        if(Right_Error < 0)
-        {
-            Right_CRR -= 1;
-        }
-
-        /*========== 4. 左右轮同步修正 ==========*/
-
-        // 谁快就压谁
-        if(Correction > 0)
-        {
-            Left_CRR -= 1;
-        }
-
-        if(Correction < 0)
-        {
-            Right_CRR -= 1;
-        }
 
         /*========== 5. 输出限幅 ==========*/
 
@@ -207,9 +204,13 @@ void TIM4_IRQHandler(void)
         TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
     }
 }
-int32_t Get_Target(void)
+int32_t Get_Left_Target(void)
 {
-	return Target;
+	return Left_Target;
+}
+int32_t Get_Right_Target(void)
+{
+	return Right_Target;
 }
 int32_t Get_Left_Real(void)
 {

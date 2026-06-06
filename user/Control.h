@@ -10,7 +10,8 @@
 //extern int32_t Right_Real;
 //设置为全工程的全局变量
 
-int32_t Get_Target(void);
+int32_t Get_Right_Target(void);
+int32_t Get_Left_Target(void);
 int32_t Get_Left_Real(void);
 int32_t Get_Right_Real(void);
 void TIM2_IRQHandler(void);
