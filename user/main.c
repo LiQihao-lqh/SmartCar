@@ -31,9 +31,9 @@ int main(void)
 	
 
 	IR_RequestMode(0,0,1);//设置传感器模式,这里是数字模式
-	OLED_ShowString(1,1,"Target:");
-	OLED_ShowString(2,1,"Real_1:");
-	OLED_ShowString(3,1,"Real_2:");
+//	OLED_ShowString(1,1,"Target:");
+//	OLED_ShowString(2,1,"Real_1:");
+//	OLED_ShowString(3,1,"Real_2:");
 	
 	
 	while(1)
@@ -45,12 +45,11 @@ int main(void)
 	Line = IR_GetDigitalByte();//读取传感器数据，并传递到line这个变量	
 	Target_Update();//按键设置速度读取，不能放中断里面，不然每10ms读取一次容易错过导致按了没效果
 	
-	
 	OLED_ShowBinary8(Line, Str);//不能写Str[9]，因为越界了，
-//	OLED_ShowSignedNum(1,8,Get_Target(),5);//刷新现实目标速度
-	OLED_ShowSignedNum(2,8,Get_Left_Real(),5);//刷新显示真实速度
+	OLED_ShowSignedNum(1,8,Right_CRR_Get(),5);//刷新现实目标速度
+	OLED_ShowSignedNum(2,8,Left_CRR_Get(),5);//刷新显示真实速度
 	OLED_ShowSignedNum(3,8,Get_Right_Real(),5);//自动调节的CRR
-	OLED_ShowString(4, 1, Str);//灰度·传感器数据，行，列，字符串
+	OLED_ShowSignedNum(4, 1,Get_Left_Real(),4);//灰度·传感器数据，行，列，字符串
 
 		
 	 Delay_ms(30);  //加延时防止一直刷新导致阻塞

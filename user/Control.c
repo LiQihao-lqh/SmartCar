@@ -5,6 +5,9 @@
 #include "key.h"
 #include "Pwm.h"
 #include "Motor.h"
+#include "OLED_ShowBinary.h"
+#include "Ir_sensor.h"
+
 
 /*
 ========================================
@@ -62,6 +65,35 @@ static int32_t Turn_Out;
 #define Base_Pwm 100
 
 
+
+static int16_t Gray_To_LineError(void)//给灰度传感器加权重，Line_Error直接用
+{
+    int16_t weight[8] = {-350, -250, -150, -50, 50, 150, 250, 350};//8路传感器，8位数组
+
+    int32_t sum = 0;//根据权重计算后的综合值
+    int16_t count = 0;//分路编号
+	uint8_t gray;
+    gray = IR_GetDigitalByte();
+    for(uint8_t i = 0; i < 8; i++)//i从0开始遍历
+    {
+        if(gray & (1 << i))
+        {
+            sum += weight[i];
+            count++;
+        }
+    }
+
+    if(count == 0)
+    {
+        return 0;   // 暂时先这样，后面可以改成丢线处理
+    }
+
+    return sum / count;
+}
+
+
+
+
 /*
 ========================================
 目标速度更新函数
@@ -110,21 +142,21 @@ void TIM4_IRQHandler(void)
     if (TIM_GetITStatus(TIM4, TIM_IT_Update) == SET)
     {
 
-        /*========== 1. 读取左右轮实际速度 ==========*/
 
         Left_Real  = Encoder_Left_Get();
         Right_Real = Encoder_Right_Get();
 
-        /*========== 2. 计算误差与速度差 ==========*/
 
-        // 单轮误差
+		
+		
+
 
         // 左右轮速度差
-        Line_Error  = Left_Real - Right_Real;//这个只能跑直线，Line_Error 数据来源换成灰度传感器才能转弯
+        Line_Error  = Gray_To_LineError();//这个只能跑直线，Line_Error 数据来源换成灰度传感器才能转弯
 
 		/*========== 4. 左右轮同步修正 ==========*/
 		//根据line_error正负修正
-		Turn_Out = (int32_t)Turn_Out_Kp*Line_Error ;
+		Turn_Out = (int32_t)(Turn_Out_Kp*Line_Error) ;
 		Left_Target =Target-Turn_Out; 
 		Right_Target =Target+Turn_Out; 
 		
@@ -133,7 +165,6 @@ void TIM4_IRQHandler(void)
 
         /*========== 3. 单轮速度闭环 ==========*/
 
-        // 左轮调整
         if(Target==0)
 		{
 		Left_CRR = 0;
@@ -204,6 +235,12 @@ void TIM4_IRQHandler(void)
         TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
     }
 }
+
+int32_t Get_Target(void)
+{
+	return Target;
+}
+
 int32_t Get_Left_Target(void)
 {
 	return Left_Target;
@@ -221,156 +258,190 @@ int32_t Get_Right_Real(void)
 	return Right_Real;
 }
 
-
-//原版本
-//#include "stm32f10x.h"// Device header
-//#include "Encoder_Left.h"
-//#include "ENCODER_RIGHT.h"
-//#include "key.h"
-//#include "Pwm.h"
-//#include "Motor.h"
-
-///*
-//算法（核心逻辑）：
-//设置/读取，储存数据
-//处理数据
-//输出数据给被控制对象（motor，pwm的crr）
-//*/
-
-//uint8_t Key;
-//int32_t Left_Target;//按键设置速度
-//int32_t Left_Real;//编码器测得数据
-//int32_t Right_Target;
-//int32_t Right_Real;
-//int32_t Target;
-
-
-//int16_t Left_Error;//误差
-//int16_t Left_CRR;
-//int16_t Right_Error;//误差
-//int16_t Right_CRR;
-
-//int16_t Correction;
-
-//int32_t Target_Update(void)//按键设置目标速度
-//{	
-//	Key=key_GetNum();//设置按键控制目标速度
-//	
-//	if(Key==1)//1加速，2减速
-//	{
-//	Target+=10;
-//	}
-//	if(Key==2)
-//	{
-//	Target-=10;
-//	}
-//	return  Target;
-//}
+int32_t Left_CRR_Get(void)
+{
+	return Left_CRR;
+}int32_t Right_CRR_Get(void)
+{
+	return Right_CRR;
+}
 
 
 
-//void TIM4_IRQHandler(void)//不需要timer头文件就能调用这个函数
-//	//定期读取cnt，防止测速周期（时间）不固定，因为不能自动算好cnt/时间
-//	{	
-//	if (TIM_GetITStatus(TIM4, TIM_IT_Update) == SET)
-//		{
-//		
-//	Left_Target=Target;		
-//	Right_Target=Target;		
-//	Left_Real=Encoder_Left_Get();//要写在TIM4_IRQHandler()里面，Real_Speed是这个.c文件的全局变量，所以可以在两个函数里共用
-//	Right_Real=Encoder_Right_Get();
-//	//10mscnt的变化值
-//	//Real=Real_Speed;// Real_Speed已保存实时速度，Real变量冗余
-//	
 
-//	Left_Error=Target-Left_Real;//实时计算误差，控制CRR
-//	Right_Error=Target-Right_Real;
-//	Correction=Left_Real-Right_Real;
-///*
-//	判断控制逻辑（不用循环，会卡死）
-//每10ms：
-//读取速度
-//计算error
-//微调CCR
-//等待下一次测速
-//调一点————等待响应，观测一下————再调一点
-//*/
-//	//先达到目标速度，然后再纠正，最后统一写入CRR
-//	if(Left_Error>0)//判断调节部分
-//	{
-//	Left_CRR+=1;
-//	}
-//	if(Left_Error<0)
-//	{
-//	Left_CRR-=1;
-//	}
-//	
-//	if(Left_CRR > 1000)//限幅，防止CRR因为调整时间长导致增加到ARR（1000）溢出
-//	{
-//	Left_CRR = 1000;
-//	}
-//	if(Left_CRR < -1000)
-//	{
-//	Left_CRR = -1000;
-//	}
-//	
-//		if(Right_Error>0)//判断调节部分
-//		{
-//		Right_CRR+=1;
-//		}
-//		if(Right_Error<0)
-//		{
-//		Right_CRR-=1;
-//		}
-//	
-//		if(Right_CRR > 1000)//限幅，防止CRR因为调整时间长导致增加到ARR（1000）溢出
-//		{
-//		Right_CRR = 1000;
-//		}
-//		if(Right_CRR < -1000)
-//		{
-//		Right_CRR = -1000;
-//		}
-//		//Correction纠正部分
-//		if(Correction>0)//快的减速，不然会越来越快
-//	{
-//	Left_CRR-=1;
-//	}
-//	if(Correction<0)
-//	{
-//	Right_CRR-=1;
-//	}
-//	
-//	Set_Right_Speed(Right_CRR);
-//	Set_Left_Speed(Left_CRR);//让控制器输出的最终值（CRR）同时包含大小和方向信息
-//	//CRR决定下一时刻怎么办
-//	
-//	//PWM输出部分
-//	if(Left_CRR>=0)
-//	{
-//	PWM_Set_Cpmpare_PWM1(Left_CRR);
-//	}
-//	if(Left_CRR<0)
-//	{
-//	PWM_Set_Cpmpare_PWM1(-Left_CRR);//CRR为负数就是先反向输出，再增大，实现减速
-//	}
-//	
-//	
-//		if(Right_CRR>=0)
-//		{
-//		PWM_Set_Compare_PWM2(Right_CRR);
-//		}
+/*
+// 左右轮目标速度
+static int32_t Left_Target = 0;
+static int32_t Right_Target = 0;
 
-//		if(Right_CRR<0)
-//		{
-//		PWM_Set_Compare_PWM2(-Right_CRR);//CRR为负数就是先反向输出，再增大，实现减速
-//		}
+// 总目标速度
+static int32_t Target = 0;
 
-//		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);//清除执行标志位
-//		}	
-//			
-//	}
+// 编码器测得的实际速度
+static int32_t Left_Real  = 0;
+static int32_t Right_Real = 0;
+
+// 左右轮速度误差
+static int32_t Left_Error  = 0;
+static int32_t Right_Error = 0;
+
+// 左右轮最终控制输出
+// 正负表示电机方向
+static int32_t Left_CRR  = 0;
+static int32_t Right_CRR = 0;
+
+// 左右轮速度差
+static int32_t Line_Error  = 0;
+
+// 速度环P参数
+static float Speed_Kp = 1.0f;
+
+// 转向修正P参数
+static float Turn_Out_Kp = 0.2f;
+
+// 转向修正输出
+static int32_t Turn_Out;
+
+// PWM输出限幅
+#define PWM_MAX   1000
+#define PWM_MIN  -1000
+
+// 基础PWM输出
+#define Base_Pwm 100
+
+
+// 更新目标速度
+// 按键1加速，按键2减速
+void Target_Update(void)
+{
+    uint8_t Key;
+
+    Key = key_GetNum();
+
+    if(Key == 1)
+    {
+        Target += 10;
+    }
+
+    if(Key == 2)
+    {
+        Target -= 10;
+    }
+}
 
 
 
-	
+// TIM4中断函数，10ms执行一次
+// 用于速度读取、闭环计算和PWM输出
+void TIM4_IRQHandler(void)
+{
+    if (TIM_GetITStatus(TIM4, TIM_IT_Update) == SET)
+    {
+        // 读取左右轮实际速度
+        Left_Real  = Encoder_Left_Get();
+        Right_Real = Encoder_Right_Get();
+
+        // 计算左右轮速度差
+        // 后续可替换为灰度传感器误差
+        Line_Error  = Left_Real - Right_Real;
+
+        // 根据速度差计算转向修正量
+        Turn_Out = (int32_t)Turn_Out_Kp * Line_Error;
+
+        // 计算左右轮目标速度
+        Left_Target  = Target - Turn_Out;
+        Right_Target = Target + Turn_Out;
+
+        // 计算左右轮速度误差
+        Left_Error  = Left_Target - Left_Real;
+        Right_Error = Right_Target - Right_Real;
+
+        // 目标为0时停止输出
+        if(Target == 0)
+        {
+            Left_CRR = 0;
+            Right_CRR = 0;
+        }
+        else
+        {
+            // 基础PWM叠加速度误差修正
+            Left_CRR  = Base_Pwm + (int32_t)(Speed_Kp * Left_Error);
+            Right_CRR = Base_Pwm + (int32_t)(Speed_Kp * Right_Error);
+        }
+
+        // 左轮PWM限幅
+        if(Left_CRR > PWM_MAX)
+        {
+            Left_CRR = PWM_MAX;
+        }
+
+        if(Left_CRR < PWM_MIN)
+        {
+            Left_CRR = PWM_MIN;
+        }
+
+        // 右轮PWM限幅
+        if(Right_CRR > PWM_MAX)
+        {
+            Right_CRR = PWM_MAX;
+        }
+
+        if(Right_CRR < PWM_MIN)
+        {
+            Right_CRR = PWM_MIN;
+        }
+
+        // 根据正负设置电机方向
+        Set_Left_Speed(Left_CRR);
+        Set_Right_Speed(Right_CRR);
+
+        // 输出左轮PWM占空比
+        if(Left_CRR >= 0)
+        {
+            PWM_Set_Compare_PWM1(Left_CRR);
+        }
+        else
+        {
+            PWM_Set_Compare_PWM1(-Left_CRR);
+        }
+
+        // 输出右轮PWM占空比
+        if(Right_CRR >= 0)
+        {
+            PWM_Set_Compare_PWM2(Right_CRR);
+        }
+        else
+        {
+            PWM_Set_Compare_PWM2(-Right_CRR);
+        }
+
+        // 清除TIM4中断标志位
+        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
+    }
+}
+
+
+// 获取左轮目标速度
+int32_t Get_Left_Target(void)
+{
+    return Left_Target;
+}
+
+// 获取右轮目标速度
+int32_t Get_Right_Target(void)
+{
+    return Right_Target;
+}
+
+// 获取左轮实际速度
+int32_t Get_Left_Real(void)
+{
+    return Left_Real;
+}
+
+// 获取右轮实际速度
+int32_t Get_Right_Real(void)
+{
+    return Right_Real;
+}
+*/

@@ -3,14 +3,14 @@
 void Encoder_Right_Init(void)//使用编码器计数模式，记录编码器根据旋转记录的高低电平
 {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);//开时钟，为计数模块准备
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;//旋转信号经过编码，采用上拉输入，输入高低电平
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14;// 两个引脚作为A/B相输入
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;// 两个引脚作为A/B相输入
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	TIM_TimeBaseInitStructure.TIM_ClockDivision=TIM_CKD_DIV1;

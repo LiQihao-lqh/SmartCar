@@ -1,7 +1,10 @@
 #include "stm32f10x.h"                  // Device header
 
+
  char str[9];
+
 void  OLED_ShowBinary8(uint8_t data, char str[9])//行，列，字符串
+	//16进制数转8位显示
 {
          // 数组存字符数据，9位是因为字符数组的特殊性质要以\0结尾
     uint8_t i;        // 循环变量
@@ -31,4 +34,11 @@ void  OLED_ShowBinary8(uint8_t data, char str[9])//行，列，字符串
     str[8] = '\0';          // 字符串结束标志，必须有
 
 }
+
+
+
+
+
+
+
 
